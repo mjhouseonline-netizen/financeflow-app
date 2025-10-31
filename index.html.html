@@ -1,0 +1,2027 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FinanceFlow - Smart Business Finance Solutions</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+        * { font-family: 'Inter', sans-serif; }
+        .gradient-bg { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+        .card-hover { transition: all 0.3s ease; }
+        .card-hover:hover { transform: translateY(-4px); box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1); }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+
+        // Utility Functions
+        const formatCurrency = (amount, currency = 'USD') => {
+            return new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(amount);
+        };
+
+        const exchangeRates = {
+            USD: 1, EUR: 1.09, GBP: 1.27, CAD: 0.74, AUD: 0.66, 
+            JPY: 0.0067, CNY: 0.14, INR: 0.012
+        };
+
+        const convertToUSD = (amount, currency) => {
+            return amount * exchangeRates[currency];
+        };
+
+        // Main App Component
+        function FinanceFlowApp() {
+            const [currentUser, setCurrentUser] = useState(null);
+            const [currentPage, setCurrentPage] = useState('dashboard');
+            const [expenses, setExpenses] = useState([]);
+            const [mileage, setMileage] = useState([]);
+            const [clients, setClients] = useState([]);
+            const [receipts, setReceipts] = useState([]);
+            const [auditLog, setAuditLog] = useState([]);
+            const [recurringExpenses, setRecurringExpenses] = useState([]);
+
+            // Load data from localStorage
+            useEffect(() => {
+                const savedUser = localStorage.getItem('financeflow_user');
+                if (savedUser) setCurrentUser(JSON.parse(savedUser));
+                
+                const savedExpenses = localStorage.getItem('financeflow_expenses');
+                if (savedExpenses) setExpenses(JSON.parse(savedExpenses));
+                else setExpenses(getSampleExpenses());
+
+                const savedMileage = localStorage.getItem('financeflow_mileage');
+                if (savedMileage) setMileage(JSON.parse(savedMileage));
+                else setMileage(getSampleMileage());
+
+                const savedClients = localStorage.getItem('financeflow_clients');
+                if (savedClients) setClients(JSON.parse(savedClients));
+                else setClients(getSampleClients());
+
+                const savedReceipts = localStorage.getItem('financeflow_receipts');
+                if (savedReceipts) setReceipts(JSON.parse(savedReceipts));
+
+                const savedAudit = localStorage.getItem('financeflow_audit');
+                if (savedAudit) setAuditLog(JSON.parse(savedAudit));
+
+                const savedRecurring = localStorage.getItem('financeflow_recurring');
+                if (savedRecurring) setRecurringExpenses(JSON.parse(savedRecurring));
+            }, []);
+
+            // Save data to localStorage
+            useEffect(() => {
+                localStorage.setItem('financeflow_expenses', JSON.stringify(expenses));
+            }, [expenses]);
+
+            useEffect(() => {
+                localStorage.setItem('financeflow_mileage', JSON.stringify(mileage));
+            }, [mileage]);
+
+            useEffect(() => {
+                localStorage.setItem('financeflow_clients', JSON.stringify(clients));
+            }, [clients]);
+
+            useEffect(() => {
+                localStorage.setItem('financeflow_receipts', JSON.stringify(receipts));
+            }, [receipts]);
+
+            useEffect(() => {
+                localStorage.setItem('financeflow_audit', JSON.stringify(auditLog));
+            }, [auditLog]);
+
+            useEffect(() => {
+                localStorage.setItem('financeflow_recurring', JSON.stringify(recurringExpenses));
+            }, [recurringExpenses]);
+
+            const addAuditEntry = (action, details) => {
+                const entry = {
+                    id: Date.now(),
+                    timestamp: new Date().toISOString(),
+                    user: currentUser?.email || 'User',
+                    action,
+                    details
+                };
+                setAuditLog(prev => [entry, ...prev]);
+            };
+
+            // Sample data
+            function getSampleExpenses() {
+                return [
+                    { id: 1, date: '2024-10-15', amount: 45.99, currency: 'USD', category: 'Meals', description: 'Client lunch meeting', deductible: true, clientId: 1, receiptId: null },
+                    { id: 2, date: '2024-10-20', amount: 299, currency: 'USD', category: 'Software', description: 'Adobe Creative Cloud', deductible: true, clientId: null, receiptId: null },
+                    { id: 3, date: '2024-10-22', amount: 89.50, currency: 'USD', category: 'Office Supplies', description: 'Printer paper and ink', deductible: true, clientId: null, receiptId: null },
+                    { id: 4, date: '2024-10-25', amount: 150, currency: 'USD', category: 'Marketing', description: 'Facebook Ads campaign', deductible: true, clientId: 2, receiptId: null },
+                    { id: 5, date: '2024-10-28', amount: 75, currency: 'EUR', category: 'Travel', description: 'Hotel breakfast', deductible: true, clientId: 1, receiptId: null }
+                ];
+            }
+
+            function getSampleMileage() {
+                return [
+                    { id: 1, date: '2024-10-18', miles: 45, purpose: 'Client meeting', startLocation: 'Office', endLocation: 'Client site', clientId: 1, rate: 0.67 },
+                    { id: 2, date: '2024-10-23', miles: 120, purpose: 'Conference attendance', startLocation: 'Home', endLocation: 'Convention Center', clientId: null, rate: 0.67 }
+                ];
+            }
+
+            function getSampleClients() {
+                return [
+                    { id: 1, name: 'John Smith', company: 'Smith & Associates', email: 'john@smithassoc.com', phone: '555-0101', taxId: '12-3456789' },
+                    { id: 2, name: 'Sarah Johnson', company: 'TechStart Inc', email: 'sarah@techstart.com', phone: '555-0202', taxId: '98-7654321' }
+                ];
+            }
+
+            // Authentication
+            const login = (email, password) => {
+                const user = { email, name: email.split('@')[0], plan: 'Professional' };
+                setCurrentUser(user);
+                localStorage.setItem('financeflow_user', JSON.stringify(user));
+                addAuditEntry('User Login', `User ${email} logged in`);
+            };
+
+            const signup = (email, password, name) => {
+                const user = { email, name, plan: 'Starter' };
+                setCurrentUser(user);
+                localStorage.setItem('financeflow_user', JSON.stringify(user));
+                addAuditEntry('User Registration', `New user ${email} registered`);
+            };
+
+            const logout = () => {
+                addAuditEntry('User Logout', `User ${currentUser.email} logged out`);
+                setCurrentUser(null);
+                localStorage.removeItem('financeflow_user');
+                setCurrentPage('dashboard');
+            };
+
+            if (!currentUser) {
+                return <AuthPage onLogin={login} onSignup={signup} />;
+            }
+
+            return (
+                <div className="min-h-screen bg-gray-50">
+                    <Navbar currentPage={currentPage} setCurrentPage={setCurrentPage} onLogout={logout} user={currentUser} />
+                    
+                    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                        {currentPage === 'dashboard' && (
+                            <Dashboard 
+                                expenses={expenses} 
+                                mileage={mileage} 
+                                clients={clients}
+                                user={currentUser}
+                            />
+                        )}
+                        {currentPage === 'expenses' && (
+                            <ExpensesPage 
+                                expenses={expenses} 
+                                setExpenses={setExpenses}
+                                clients={clients}
+                                receipts={receipts}
+                                setReceipts={setReceipts}
+                                addAuditEntry={addAuditEntry}
+                                recurringExpenses={recurringExpenses}
+                                setRecurringExpenses={setRecurringExpenses}
+                            />
+                        )}
+                        {currentPage === 'mileage' && (
+                            <MileagePage 
+                                mileage={mileage} 
+                                setMileage={setMileage}
+                                clients={clients}
+                                addAuditEntry={addAuditEntry}
+                            />
+                        )}
+                        {currentPage === 'clients' && (
+                            <ClientsPage 
+                                clients={clients} 
+                                setClients={setClients}
+                                expenses={expenses}
+                                mileage={mileage}
+                                addAuditEntry={addAuditEntry}
+                            />
+                        )}
+                        {currentPage === 'reports' && (
+                            <ReportsPage 
+                                expenses={expenses}
+                                mileage={mileage}
+                                clients={clients}
+                                user={currentUser}
+                            />
+                        )}
+                        {currentPage === 'tax-tools' && (
+                            <TaxToolsPage expenses={expenses} mileage={mileage} />
+                        )}
+                        {currentPage === 'integrations' && (
+                            <IntegrationsPage />
+                        )}
+                        {currentPage === 'audit' && (
+                            <AuditPage auditLog={auditLog} />
+                        )}
+                        {currentPage === 'settings' && (
+                            <SettingsPage user={currentUser} />
+                        )}
+                    </div>
+                </div>
+            );
+        }
+
+        // Auth Page Component
+        function AuthPage({ onLogin, onSignup }) {
+            const [isLogin, setIsLogin] = useState(true);
+            const [email, setEmail] = useState('demo@financeflow.com');
+            const [password, setPassword] = useState('demo123');
+            const [name, setName] = useState('');
+
+            const handleSubmit = (e) => {
+                e.preventDefault();
+                if (isLogin) {
+                    onLogin(email, password);
+                } else {
+                    onSignup(email, password, name);
+                }
+            };
+
+            return (
+                <div className="min-h-screen gradient-bg flex items-center justify-center px-4">
+                    <div className="max-w-md w-full bg-white rounded-2xl shadow-2xl p-8">
+                        <div className="text-center mb-8">
+                            <h1 className="text-4xl font-bold text-gray-900 mb-2">💰 FinanceFlow</h1>
+                            <p className="text-gray-600">Smart Business Finance Solutions</p>
+                        </div>
+
+                        <div className="flex gap-2 mb-6">
+                            <button
+                                onClick={() => setIsLogin(true)}
+                                className={`flex-1 py-2 px-4 rounded-lg font-medium transition ${
+                                    isLogin ? 'bg-purple-600 text-white' : 'bg-gray-100 text-gray-700'
+                                }`}
+                            >
+                                Login
+                            </button>
+                            <button
+                                onClick={() => setIsLogin(false)}
+                                className={`flex-1 py-2 px-4 rounded-lg font-medium transition ${
+                                    !isLogin ? 'bg-purple-600 text-white' : 'bg-gray-100 text-gray-700'
+                                }`}
+                            >
+                                Sign Up
+                            </button>
+                        </div>
+
+                        <form onSubmit={handleSubmit} className="space-y-4">
+                            {!isLogin && (
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
+                                    <input
+                                        type="text"
+                                        value={name}
+                                        onChange={(e) => setName(e.target.value)}
+                                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                        required={!isLogin}
+                                    />
+                                </div>
+                            )}
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                                <input
+                                    type="email"
+                                    value={email}
+                                    onChange={(e) => setEmail(e.target.value)}
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                    required
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
+                                <input
+                                    type="password"
+                                    value={password}
+                                    onChange={(e) => setPassword(e.target.value)}
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                    required
+                                />
+                            </div>
+                            <button
+                                type="submit"
+                                className="w-full bg-purple-600 text-white py-3 rounded-lg font-semibold hover:bg-purple-700 transition"
+                            >
+                                {isLogin ? 'Login' : 'Create Account'}
+                            </button>
+                        </form>
+
+                        <div className="mt-6 p-4 bg-blue-50 rounded-lg">
+                            <p className="text-sm text-blue-800 font-medium">Demo Account:</p>
+                            <p className="text-xs text-blue-600">demo@financeflow.com / demo123</p>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        // Navbar Component
+        function Navbar({ currentPage, setCurrentPage, onLogout, user }) {
+            const navItems = [
+                { id: 'dashboard', label: '📊 Dashboard', icon: '📊' },
+                { id: 'expenses', label: '💳 Expenses', icon: '💳' },
+                { id: 'mileage', label: '🚗 Mileage', icon: '🚗' },
+                { id: 'clients', label: '👥 Clients', icon: '👥' },
+                { id: 'reports', label: '📄 Reports', icon: '📄' },
+                { id: 'tax-tools', label: '🧮 Tax Tools', icon: '🧮' },
+                { id: 'integrations', label: '🔗 Integrations', icon: '🔗' },
+                { id: 'audit', label: '📋 Audit Log', icon: '📋' },
+                { id: 'settings', label: '⚙️ Settings', icon: '⚙️' }
+            ];
+
+            return (
+                <nav className="gradient-bg text-white shadow-lg">
+                    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                        <div className="flex items-center justify-between h-16">
+                            <div className="flex items-center space-x-8">
+                                <h1 className="text-2xl font-bold">💰 FinanceFlow</h1>
+                                <div className="hidden md:flex space-x-1">
+                                    {navItems.map(item => (
+                                        <button
+                                            key={item.id}
+                                            onClick={() => setCurrentPage(item.id)}
+                                            className={`px-3 py-2 rounded-lg text-sm font-medium transition ${
+                                                currentPage === item.id 
+                                                    ? 'bg-white bg-opacity-20' 
+                                                    : 'hover:bg-white hover:bg-opacity-10'
+                                            }`}
+                                        >
+                                            {item.label}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                            <div className="flex items-center space-x-4">
+                                <div className="text-right hidden sm:block">
+                                    <p className="text-sm font-medium">{user.name}</p>
+                                    <p className="text-xs opacity-80">{user.plan} Plan</p>
+                                </div>
+                                <button
+                                    onClick={onLogout}
+                                    className="bg-white bg-opacity-20 hover:bg-opacity-30 px-4 py-2 rounded-lg text-sm font-medium transition"
+                                >
+                                    Logout
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    {/* Mobile menu */}
+                    <div className="md:hidden px-4 pb-4 flex overflow-x-auto space-x-2">
+                        {navItems.map(item => (
+                            <button
+                                key={item.id}
+                                onClick={() => setCurrentPage(item.id)}
+                                className={`px-3 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition ${
+                                    currentPage === item.id 
+                                        ? 'bg-white bg-opacity-20' 
+                                        : 'hover:bg-white hover:bg-opacity-10'
+                                }`}
+                            >
+                                {item.icon}
+                            </button>
+                        ))}
+                    </div>
+                </nav>
+            );
+        }
+
+        // Dashboard Component
+        function Dashboard({ expenses, mileage, clients, user }) {
+            const totalExpenses = expenses.reduce((sum, exp) => sum + convertToUSD(exp.amount, exp.currency), 0);
+            const totalDeductible = expenses.filter(e => e.deductible).reduce((sum, exp) => sum + convertToUSD(exp.amount, exp.currency), 0);
+            const totalMileageDeduction = mileage.reduce((sum, m) => sum + (m.miles * m.rate), 0);
+            const estimatedTaxSavings = (totalDeductible + totalMileageDeduction) * 0.33;
+
+            const currentMonth = new Date().getMonth();
+            const currentYear = new Date().getFullYear();
+            const thisMonthExpenses = expenses.filter(e => {
+                const expDate = new Date(e.date);
+                return expDate.getMonth() === currentMonth && expDate.getFullYear() === currentYear;
+            });
+            const thisMonthTotal = thisMonthExpenses.reduce((sum, exp) => sum + convertToUSD(exp.amount, exp.currency), 0);
+
+            const categories = ['Meals', 'Travel', 'Office Supplies', 'Software', 'Equipment', 'Marketing', 'Other'];
+            const categoryData = categories.map(cat => ({
+                category: cat,
+                amount: expenses.filter(e => e.category === cat).reduce((sum, exp) => sum + convertToUSD(exp.amount, exp.currency), 0)
+            }));
+
+            return (
+                <div className="space-y-6">
+                    <div className="flex justify-between items-center">
+                        <h2 className="text-3xl font-bold text-gray-900">Dashboard</h2>
+                        <div className="text-sm text-gray-600">
+                            Welcome back, <span className="font-semibold">{user.name}</span>!
+                        </div>
+                    </div>
+
+                    {/* Summary Cards */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                        <SummaryCard
+                            title="Total Expenses"
+                            value={formatCurrency(totalExpenses)}
+                            icon="💳"
+                            color="bg-blue-500"
+                        />
+                        <SummaryCard
+                            title="Tax Deductible"
+                            value={formatCurrency(totalDeductible + totalMileageDeduction)}
+                            icon="✅"
+                            color="bg-green-500"
+                        />
+                        <SummaryCard
+                            title="This Month"
+                            value={formatCurrency(thisMonthTotal)}
+                            icon="📅"
+                            color="bg-purple-500"
+                        />
+                        <SummaryCard
+                            title="Est. Tax Savings"
+                            value={formatCurrency(estimatedTaxSavings)}
+                            icon="💰"
+                            color="bg-yellow-500"
+                        />
+                    </div>
+
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        {/* Recent Expenses */}
+                        <div className="bg-white rounded-xl shadow-md p-6">
+                            <h3 className="text-xl font-bold text-gray-900 mb-4">Recent Expenses</h3>
+                            <div className="space-y-3">
+                                {expenses.slice(0, 5).map(expense => {
+                                    const client = clients.find(c => c.id === expense.clientId);
+                                    return (
+                                        <div key={expense.id} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                                            <div className="flex-1">
+                                                <p className="font-medium text-gray-900">{expense.description}</p>
+                                                <p className="text-sm text-gray-600">
+                                                    {expense.category} • {expense.date}
+                                                    {client && <span className="ml-2 text-purple-600">• {client.name}</span>}
+                                                </p>
+                                            </div>
+                                            <div className="text-right">
+                                                <p className="font-bold text-gray-900">
+                                                    {formatCurrency(expense.amount, expense.currency)}
+                                                </p>
+                                                {expense.deductible && (
+                                                    <span className="text-xs text-green-600">✅ Deductible</span>
+                                                )}
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+
+                        {/* Category Breakdown */}
+                        <div className="bg-white rounded-xl shadow-md p-6">
+                            <h3 className="text-xl font-bold text-gray-900 mb-4">Expenses by Category</h3>
+                            <div className="space-y-3">
+                                {categoryData
+                                    .filter(c => c.amount > 0)
+                                    .sort((a, b) => b.amount - a.amount)
+                                    .map(cat => (
+                                        <div key={cat.category} className="flex justify-between items-center">
+                                            <span className="text-gray-700">{cat.category}</span>
+                                            <div className="flex items-center space-x-3">
+                                                <div className="w-32 bg-gray-200 rounded-full h-2">
+                                                    <div
+                                                        className="bg-purple-600 h-2 rounded-full"
+                                                        style={{ width: `${(cat.amount / totalExpenses) * 100}%` }}
+                                                    ></div>
+                                                </div>
+                                                <span className="font-semibold text-gray-900 w-24 text-right">
+                                                    {formatCurrency(cat.amount)}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    ))}
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Quick Stats */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div className="bg-white rounded-xl shadow-md p-6">
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <p className="text-gray-600 text-sm">Total Clients</p>
+                                    <p className="text-3xl font-bold text-gray-900">{clients.length}</p>
+                                </div>
+                                <div className="text-4xl">👥</div>
+                            </div>
+                        </div>
+                        <div className="bg-white rounded-xl shadow-md p-6">
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <p className="text-gray-600 text-sm">Mileage (This Month)</p>
+                                    <p className="text-3xl font-bold text-gray-900">
+                                        {mileage.reduce((sum, m) => sum + m.miles, 0)} mi
+                                    </p>
+                                </div>
+                                <div className="text-4xl">🚗</div>
+                            </div>
+                        </div>
+                        <div className="bg-white rounded-xl shadow-md p-6">
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <p className="text-gray-600 text-sm">Mileage Deduction</p>
+                                    <p className="text-3xl font-bold text-gray-900">
+                                        {formatCurrency(totalMileageDeduction)}
+                                    </p>
+                                </div>
+                                <div className="text-4xl">💵</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        // Summary Card Component
+        function SummaryCard({ title, value, icon, color }) {
+            return (
+                <div className="bg-white rounded-xl shadow-md p-6 card-hover">
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <p className="text-gray-600 text-sm mb-1">{title}</p>
+                            <p className="text-2xl font-bold text-gray-900">{value}</p>
+                        </div>
+                        <div className={`${color} text-white text-3xl p-3 rounded-lg`}>
+                            {icon}
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        // Expenses Page Component
+        function ExpensesPage({ expenses, setExpenses, clients, receipts, setReceipts, addAuditEntry, recurringExpenses, setRecurringExpenses }) {
+            const [showAddForm, setShowAddForm] = useState(false);
+            const [showRecurringForm, setShowRecurringForm] = useState(false);
+            const [showOCR, setShowOCR] = useState(false);
+            const [editingExpense, setEditingExpense] = useState(null);
+            const [filterCategory, setFilterCategory] = useState('all');
+            const [formData, setFormData] = useState({
+                date: new Date().toISOString().split('T')[0],
+                amount: '',
+                currency: 'USD',
+                category: 'Meals',
+                description: '',
+                deductible: true,
+                clientId: ''
+            });
+
+            const categories = ['Meals', 'Travel', 'Office Supplies', 'Software', 'Equipment', 'Marketing', 'Other'];
+            const currencies = ['USD', 'EUR', 'GBP', 'CAD', 'AUD', 'JPY', 'CNY', 'INR'];
+
+            const handleSubmit = (e) => {
+                e.preventDefault();
+                if (editingExpense) {
+                    const updated = expenses.map(exp => 
+                        exp.id === editingExpense.id 
+                            ? { ...formData, id: exp.id, clientId: formData.clientId || null }
+                            : exp
+                    );
+                    setExpenses(updated);
+                    addAuditEntry('Expense Updated', `Modified expense: ${formData.description}`);
+                } else {
+                    const newExpense = {
+                        ...formData,
+                        id: Date.now(),
+                        clientId: formData.clientId || null
+                    };
+                    setExpenses([newExpense, ...expenses]);
+                    addAuditEntry('Expense Added', `New expense: ${formData.description} - ${formatCurrency(formData.amount, formData.currency)}`);
+                }
+                resetForm();
+            };
+
+            const resetForm = () => {
+                setFormData({
+                    date: new Date().toISOString().split('T')[0],
+                    amount: '',
+                    currency: 'USD',
+                    category: 'Meals',
+                    description: '',
+                    deductible: true,
+                    clientId: ''
+                });
+                setShowAddForm(false);
+                setEditingExpense(null);
+            };
+
+            const handleEdit = (expense) => {
+                setFormData(expense);
+                setEditingExpense(expense);
+                setShowAddForm(true);
+            };
+
+            const handleDelete = (id) => {
+                if (confirm('Are you sure you want to delete this expense?')) {
+                    const expense = expenses.find(e => e.id === id);
+                    setExpenses(expenses.filter(exp => exp.id !== id));
+                    addAuditEntry('Expense Deleted', `Deleted expense: ${expense.description}`);
+                }
+            };
+
+            const handleOCRScan = (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    // Simulate OCR processing
+                    setTimeout(() => {
+                        setFormData({
+                            ...formData,
+                            description: 'Receipt from ' + file.name,
+                            amount: (Math.random() * 100 + 10).toFixed(2),
+                            category: categories[Math.floor(Math.random() * categories.length)]
+                        });
+                        setShowOCR(false);
+                        setShowAddForm(true);
+                        addAuditEntry('Receipt Scanned', `OCR processed: ${file.name}`);
+                        alert('✅ Receipt scanned! Review and save the expense.');
+                    }, 1500);
+                }
+            };
+
+            const filteredExpenses = filterCategory === 'all' 
+                ? expenses 
+                : expenses.filter(e => e.category === filterCategory);
+
+            const totalExpenses = filteredExpenses.reduce((sum, exp) => sum + convertToUSD(exp.amount, exp.currency), 0);
+            const totalDeductible = filteredExpenses.filter(e => e.deductible).reduce((sum, exp) => sum + convertToUSD(exp.amount, exp.currency), 0);
+
+            return (
+                <div className="space-y-6">
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                        <div>
+                            <h2 className="text-3xl font-bold text-gray-900">Expenses</h2>
+                            <p className="text-gray-600 mt-1">Track and manage your business expenses</p>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                            <button
+                                onClick={() => { setShowOCR(true); }}
+                                className="bg-green-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-green-700 transition"
+                            >
+                                📸 Scan Receipt (OCR)
+                            </button>
+                            <button
+                                onClick={() => setShowRecurringForm(true)}
+                                className="bg-blue-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-700 transition"
+                            >
+                                🔄 Recurring Expenses
+                            </button>
+                            <button
+                                onClick={() => setShowAddForm(true)}
+                                className="bg-purple-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-purple-700 transition"
+                            >
+                                + Add Expense
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* OCR Modal */}
+                    {showOCR && (
+                        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                            <div className="bg-white rounded-xl p-6 max-w-md w-full">
+                                <h3 className="text-xl font-bold mb-4">Scan Receipt with OCR</h3>
+                                <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
+                                    <input
+                                        type="file"
+                                        accept="image/*"
+                                        onChange={handleOCRScan}
+                                        className="hidden"
+                                        id="ocr-upload"
+                                    />
+                                    <label htmlFor="ocr-upload" className="cursor-pointer">
+                                        <div className="text-6xl mb-4">📸</div>
+                                        <p className="text-gray-700 font-medium mb-2">Upload Receipt Image</p>
+                                        <p className="text-sm text-gray-500">Supports JPG, PNG, PDF</p>
+                                        <button className="mt-4 bg-purple-600 text-white px-6 py-2 rounded-lg">
+                                            Choose File
+                                        </button>
+                                    </label>
+                                </div>
+                                <button
+                                    onClick={() => setShowOCR(false)}
+                                    className="mt-4 w-full bg-gray-200 text-gray-700 px-4 py-2 rounded-lg"
+                                >
+                                    Cancel
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Add/Edit Form */}
+                    {showAddForm && (
+                        <div className="bg-white rounded-xl shadow-md p-6">
+                            <h3 className="text-xl font-bold mb-4">
+                                {editingExpense ? 'Edit Expense' : 'Add New Expense'}
+                            </h3>
+                            <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Date</label>
+                                    <input
+                                        type="date"
+                                        value={formData.date}
+                                        onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                                        required
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Amount</label>
+                                    <input
+                                        type="number"
+                                        step="0.01"
+                                        value={formData.amount}
+                                        onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                                        required
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Currency</label>
+                                    <select
+                                        value={formData.currency}
+                                        onChange={(e) => setFormData({ ...formData, currency: e.target.value })}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                                    >
+                                        {currencies.map(curr => (
+                                            <option key={curr} value={curr}>{curr}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
+                                    <select
+                                        value={formData.category}
+                                        onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                                    >
+                                        {categories.map(cat => (
+                                            <option key={cat} value={cat}>{cat}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div className="md:col-span-2">
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                                    <input
+                                        type="text"
+                                        value={formData.description}
+                                        onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                                        required
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Client (Optional)</label>
+                                    <select
+                                        value={formData.clientId}
+                                        onChange={(e) => setFormData({ ...formData, clientId: e.target.value })}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                                    >
+                                        <option value="">No Client</option>
+                                        {clients.map(client => (
+                                            <option key={client.id} value={client.id}>{client.name}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div className="flex items-center">
+                                    <label className="flex items-center cursor-pointer">
+                                        <input
+                                            type="checkbox"
+                                            checked={formData.deductible}
+                                            onChange={(e) => setFormData({ ...formData, deductible: e.target.checked })}
+                                            className="w-5 h-5 text-purple-600 rounded focus:ring-2 focus:ring-purple-500"
+                                        />
+                                        <span className="ml-2 text-sm font-medium text-gray-700">Tax Deductible</span>
+                                    </label>
+                                </div>
+                                <div className="md:col-span-2 flex gap-2 justify-end">
+                                    <button
+                                        type="button"
+                                        onClick={resetForm}
+                                        className="px-6 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition"
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button
+                                        type="submit"
+                                        className="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition"
+                                    >
+                                        {editingExpense ? 'Update' : 'Add'} Expense
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    )}
+
+                    {/* Summary */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div className="bg-white rounded-xl shadow-md p-6">
+                            <p className="text-gray-600 text-sm">Total Expenses</p>
+                            <p className="text-3xl font-bold text-gray-900">{formatCurrency(totalExpenses)}</p>
+                        </div>
+                        <div className="bg-white rounded-xl shadow-md p-6">
+                            <p className="text-gray-600 text-sm">Deductible</p>
+                            <p className="text-3xl font-bold text-green-600">{formatCurrency(totalDeductible)}</p>
+                        </div>
+                        <div className="bg-white rounded-xl shadow-md p-6">
+                            <p className="text-gray-600 text-sm">Total Items</p>
+                            <p className="text-3xl font-bold text-gray-900">{filteredExpenses.length}</p>
+                        </div>
+                    </div>
+
+                    {/* Filter */}
+                    <div className="bg-white rounded-xl shadow-md p-4">
+                        <div className="flex flex-wrap gap-2">
+                            <button
+                                onClick={() => setFilterCategory('all')}
+                                className={`px-4 py-2 rounded-lg font-medium transition ${
+                                    filterCategory === 'all' 
+                                        ? 'bg-purple-600 text-white' 
+                                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                                }`}
+                            >
+                                All
+                            </button>
+                            {categories.map(cat => (
+                                <button
+                                    key={cat}
+                                    onClick={() => setFilterCategory(cat)}
+                                    className={`px-4 py-2 rounded-lg font-medium transition ${
+                                        filterCategory === cat 
+                                            ? 'bg-purple-600 text-white' 
+                                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                                    }`}
+                                >
+                                    {cat}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Expenses List */}
+                    <div className="bg-white rounded-xl shadow-md overflow-hidden">
+                        <div className="overflow-x-auto">
+                            <table className="w-full">
+                                <thead className="bg-gray-50">
+                                    <tr>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Description</th>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Category</th>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Client</th>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Amount</th>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-gray-200">
+                                    {filteredExpenses.map(expense => {
+                                        const client = clients.find(c => c.id === expense.clientId);
+                                        return (
+                                            <tr key={expense.id} className="hover:bg-gray-50">
+                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                                    {expense.date}
+                                                </td>
+                                                <td className="px-6 py-4 text-sm text-gray-900">
+                                                    {expense.description}
+                                                </td>
+                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                                                    {expense.category}
+                                                </td>
+                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-purple-600">
+                                                    {client ? client.name : '-'}
+                                                </td>
+                                                <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">
+                                                    {formatCurrency(expense.amount, expense.currency)}
+                                                    {expense.currency !== 'USD' && (
+                                                        <div className="text-xs text-gray-500">
+                                                            ≈ {formatCurrency(convertToUSD(expense.amount, expense.currency))}
+                                                        </div>
+                                                    )}
+                                                </td>
+                                                <td className="px-6 py-4 whitespace-nowrap text-sm">
+                                                    {expense.deductible ? (
+                                                        <span className="px-2 py-1 bg-green-100 text-green-800 rounded-full text-xs font-medium">
+                                                            ✅ Deductible
+                                                        </span>
+                                                    ) : (
+                                                        <span className="px-2 py-1 bg-gray-100 text-gray-600 rounded-full text-xs font-medium">
+                                                            Personal
+                                                        </span>
+                                                    )}
+                                                </td>
+                                                <td className="px-6 py-4 whitespace-nowrap text-sm">
+                                                    <button
+                                                        onClick={() => handleEdit(expense)}
+                                                        className="text-blue-600 hover:text-blue-800 mr-3"
+                                                    >
+                                                        Edit
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleDelete(expense.id)}
+                                                        className="text-red-600 hover:text-red-800"
+                                                    >
+                                                        Delete
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        // Mileage Page Component
+        function MileagePage({ mileage, setMileage, clients, addAuditEntry }) {
+            const [showAddForm, setShowAddForm] = useState(false);
+            const [editingMileage, setEditingMileage] = useState(null);
+            const [formData, setFormData] = useState({
+                date: new Date().toISOString().split('T')[0],
+                miles: '',
+                purpose: '',
+                startLocation: '',
+                endLocation: '',
+                clientId: '',
+                rate: 0.67
+            });
+
+            const handleSubmit = (e) => {
+                e.preventDefault();
+                if (editingMileage) {
+                    const updated = mileage.map(m => 
+                        m.id === editingMileage.id 
+                            ? { ...formData, id: m.id, clientId: formData.clientId || null }
+                            : m
+                    );
+                    setMileage(updated);
+                    addAuditEntry('Mileage Updated', `Modified mileage: ${formData.miles} miles`);
+                } else {
+                    const newMileage = {
+                        ...formData,
+                        id: Date.now(),
+                        clientId: formData.clientId || null
+                    };
+                    setMileage([newMileage, ...mileage]);
+                    addAuditEntry('Mileage Added', `New mileage: ${formData.miles} miles - ${formData.purpose}`);
+                }
+                resetForm();
+            };
+
+            const resetForm = () => {
+                setFormData({
+                    date: new Date().toISOString().split('T')[0],
+                    miles: '',
+                    purpose: '',
+                    startLocation: '',
+                    endLocation: '',
+                    clientId: '',
+                    rate: 0.67
+                });
+                setShowAddForm(false);
+                setEditingMileage(null);
+            };
+
+            const handleEdit = (m) => {
+                setFormData(m);
+                setEditingMileage(m);
+                setShowAddForm(true);
+            };
+
+            const handleDelete = (id) => {
+                if (confirm('Are you sure you want to delete this mileage entry?')) {
+                    const entry = mileage.find(m => m.id === id);
+                    setMileage(mileage.filter(m => m.id !== id));
+                    addAuditEntry('Mileage Deleted', `Deleted mileage: ${entry.miles} miles`);
+                }
+            };
+
+            const totalMiles = mileage.reduce((sum, m) => sum + parseFloat(m.miles), 0);
+            const totalDeduction = mileage.reduce((sum, m) => sum + (m.miles * m.rate), 0);
+
+            return (
+                <div className="space-y-6">
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                        <div>
+                            <h2 className="text-3xl font-bold text-gray-900">Mileage Tracking</h2>
+                            <p className="text-gray-600 mt-1">Track business mileage at IRS standard rate ($0.67/mile)</p>
+                        </div>
+                        <button
+                            onClick={() => setShowAddForm(true)}
+                            className="bg-purple-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-purple-700 transition"
+                        >
+                            + Add Mileage
+                        </button>
+                    </div>
+
+                    {/* Add/Edit Form */}
+                    {showAddForm && (
+                        <div className="bg-white rounded-xl shadow-md p-6">
+                            <h3 className="text-xl font-bold mb-4">
+                                {editingMileage ? 'Edit Mileage' : 'Add New Mileage'}
+                            </h3>
+                            <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Date</label>
+                                    <input
+                                        type="date"
+                                        value={formData.date}
+                                        onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                                        required
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Miles</label>
+                                    <input
+                                        type="number"
+                                        step="0.1"
+                                        value={formData.miles}
+                                        onChange={(e) => setFormData({ ...formData, miles: e.target.value })}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                                        required
+                                    />
+                                </div>
+                                <div className="md:col-span-2">
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Purpose</label>
+                                    <input
+                                        type="text"
+                                        value={formData.purpose}
+                                        onChange={(e) => setFormData({ ...formData, purpose: e.target.value })}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                                        placeholder="e.g., Client meeting, Conference"
+                                        required
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Start Location</label>
+                                    <input
+                                        type="text"
+                                        value={formData.startLocation}
+                                        onChange={(e) => setFormData({ ...formData, startLocation: e.target.value })}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                                        required
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">End Location</label>
+                                    <input
+                                        type="text"
+                                        value={formData.endLocation}
+                                        onChange={(e) => setFormData({ ...formData, endLocation: e.target.value })}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                                        required
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Client (Optional)</label>
+                                    <select
+                                        value={formData.clientId}
+                                        onChange={(e) => setFormData({ ...formData, clientId: e.target.value })}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                                    >
+                                        <option value="">No Client</option>
+                                        {clients.map(client => (
+                                            <option key={client.id} value={client.id}>{client.name}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Rate ($/mile)</label>
+                                    <input
+                                        type="number"
+                                        step="0.01"
+                                        value={formData.rate}
+                                        onChange={(e) => setFormData({ ...formData, rate: parseFloat(e.target.value) })}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                                        required
+                                    />
+                                </div>
+                                <div className="md:col-span-2 flex gap-2 justify-end">
+                                    <button
+                                        type="button"
+                                        onClick={resetForm}
+                                        className="px-6 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition"
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button
+                                        type="submit"
+                                        className="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition"
+                                    >
+                                        {editingMileage ? 'Update' : 'Add'} Mileage
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    )}
+
+                    {/* Summary */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div className="bg-white rounded-xl shadow-md p-6">
+                            <p className="text-gray-600 text-sm">Total Miles</p>
+                            <p className="text-3xl font-bold text-gray-900">{totalMiles.toFixed(1)} mi</p>
+                        </div>
+                        <div className="bg-white rounded-xl shadow-md p-6">
+                            <p className="text-gray-600 text-sm">Total Deduction</p>
+                            <p className="text-3xl font-bold text-green-600">{formatCurrency(totalDeduction)}</p>
+                        </div>
+                        <div className="bg-white rounded-xl shadow-md p-6">
+                            <p className="text-gray-600 text-sm">Total Trips</p>
+                            <p className="text-3xl font-bold text-gray-900">{mileage.length}</p>
+                        </div>
+                    </div>
+
+                    {/* Mileage List */}
+                    <div className="bg-white rounded-xl shadow-md overflow-hidden">
+                        <div className="overflow-x-auto">
+                            <table className="w-full">
+                                <thead className="bg-gray-50">
+                                    <tr>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Purpose</th>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Route</th>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Client</th>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Miles</th>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Deduction</th>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-gray-200">
+                                    {mileage.map(m => {
+                                        const client = clients.find(c => c.id === m.clientId);
+                                        return (
+                                            <tr key={m.id} className="hover:bg-gray-50">
+                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                                    {m.date}
+                                                </td>
+                                                <td className="px-6 py-4 text-sm text-gray-900">
+                                                    {m.purpose}
+                                                </td>
+                                                <td className="px-6 py-4 text-sm text-gray-600">
+                                                    {m.startLocation} → {m.endLocation}
+                                                </td>
+                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-purple-600">
+                                                    {client ? client.name : '-'}
+                                                </td>
+                                                <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">
+                                                    {m.miles} mi
+                                                </td>
+                                                <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-green-600">
+                                                    {formatCurrency(m.miles * m.rate)}
+                                                </td>
+                                                <td className="px-6 py-4 whitespace-nowrap text-sm">
+                                                    <button
+                                                        onClick={() => handleEdit(m)}
+                                                        className="text-blue-600 hover:text-blue-800 mr-3"
+                                                    >
+                                                        Edit
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleDelete(m.id)}
+                                                        className="text-red-600 hover:text-red-800"
+                                                    >
+                                                        Delete
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        // Clients Page Component
+        function ClientsPage({ clients, setClients, expenses, mileage, addAuditEntry }) {
+            const [showAddForm, setShowAddForm] = useState(false);
+            const [editingClient, setEditingClient] = useState(null);
+            const [formData, setFormData] = useState({
+                name: '',
+                company: '',
+                email: '',
+                phone: '',
+                taxId: ''
+            });
+
+            const handleSubmit = (e) => {
+                e.preventDefault();
+                if (editingClient) {
+                    const updated = clients.map(c => 
+                        c.id === editingClient.id ? { ...formData, id: c.id } : c
+                    );
+                    setClients(updated);
+                    addAuditEntry('Client Updated', `Modified client: ${formData.name}`);
+                } else {
+                    const newClient = { ...formData, id: Date.now() };
+                    setClients([...clients, newClient]);
+                    addAuditEntry('Client Added', `New client: ${formData.name}`);
+                }
+                resetForm();
+            };
+
+            const resetForm = () => {
+                setFormData({ name: '', company: '', email: '', phone: '', taxId: '' });
+                setShowAddForm(false);
+                setEditingClient(null);
+            };
+
+            const handleEdit = (client) => {
+                setFormData(client);
+                setEditingClient(client);
+                setShowAddForm(true);
+            };
+
+            const handleDelete = (id) => {
+                if (confirm('Are you sure you want to delete this client?')) {
+                    const client = clients.find(c => c.id === id);
+                    setClients(clients.filter(c => c.id !== id));
+                    addAuditEntry('Client Deleted', `Deleted client: ${client.name}`);
+                }
+            };
+
+            const getClientStats = (clientId) => {
+                const clientExpenses = expenses.filter(e => e.clientId === clientId);
+                const clientMileage = mileage.filter(m => m.clientId === clientId);
+                const totalExpenses = clientExpenses.reduce((sum, e) => sum + convertToUSD(e.amount, e.currency), 0);
+                const totalMileage = clientMileage.reduce((sum, m) => sum + (m.miles * m.rate), 0);
+                return {
+                    totalExpenses,
+                    totalMileage,
+                    totalDeductions: totalExpenses + totalMileage,
+                    transactionCount: clientExpenses.length + clientMileage.length
+                };
+            };
+
+            return (
+                <div className="space-y-6">
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                        <div>
+                            <h2 className="text-3xl font-bold text-gray-900">Clients</h2>
+                            <p className="text-gray-600 mt-1">Manage your clients and track per-client expenses</p>
+                        </div>
+                        <button
+                            onClick={() => setShowAddForm(true)}
+                            className="bg-purple-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-purple-700 transition"
+                        >
+                            + Add Client
+                        </button>
+                    </div>
+
+                    {/* Add/Edit Form */}
+                    {showAddForm && (
+                        <div className="bg-white rounded-xl shadow-md p-6">
+                            <h3 className="text-xl font-bold mb-4">
+                                {editingClient ? 'Edit Client' : 'Add New Client'}
+                            </h3>
+                            <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
+                                    <input
+                                        type="text"
+                                        value={formData.name}
+                                        onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                                        required
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Company</label>
+                                    <input
+                                        type="text"
+                                        value={formData.company}
+                                        onChange={(e) => setFormData({ ...formData, company: e.target.value })}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                                        required
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                                    <input
+                                        type="email"
+                                        value={formData.email}
+                                        onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                                        required
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
+                                    <input
+                                        type="tel"
+                                        value={formData.phone}
+                                        onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                                    />
+                                </div>
+                                <div className="md:col-span-2">
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Tax ID / EIN</label>
+                                    <input
+                                        type="text"
+                                        value={formData.taxId}
+                                        onChange={(e) => setFormData({ ...formData, taxId: e.target.value })}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                                    />
+                                </div>
+                                <div className="md:col-span-2 flex gap-2 justify-end">
+                                    <button
+                                        type="button"
+                                        onClick={resetForm}
+                                        className="px-6 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition"
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button
+                                        type="submit"
+                                        className="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition"
+                                    >
+                                        {editingClient ? 'Update' : 'Add'} Client
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    )}
+
+                    {/* Clients Grid */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {clients.map(client => {
+                            const stats = getClientStats(client.id);
+                            return (
+                                <div key={client.id} className="bg-white rounded-xl shadow-md p-6 card-hover">
+                                    <div className="flex items-start justify-between mb-4">
+                                        <div>
+                                            <h3 className="text-lg font-bold text-gray-900">{client.name}</h3>
+                                            <p className="text-sm text-gray-600">{client.company}</p>
+                                        </div>
+                                        <div className="text-3xl">👤</div>
+                                    </div>
+                                    <div className="space-y-2 mb-4">
+                                        <div className="flex items-center text-sm text-gray-600">
+                                            <span className="mr-2">📧</span>
+                                            <span className="truncate">{client.email}</span>
+                                        </div>
+                                        {client.phone && (
+                                            <div className="flex items-center text-sm text-gray-600">
+                                                <span className="mr-2">📱</span>
+                                                <span>{client.phone}</span>
+                                            </div>
+                                        )}
+                                        {client.taxId && (
+                                            <div className="flex items-center text-sm text-gray-600">
+                                                <span className="mr-2">🆔</span>
+                                                <span>{client.taxId}</span>
+                                            </div>
+                                        )}
+                                    </div>
+                                    <div className="border-t pt-4 space-y-2">
+                                        <div className="flex justify-between text-sm">
+                                            <span className="text-gray-600">Total Expenses:</span>
+                                            <span className="font-semibold">{formatCurrency(stats.totalExpenses)}</span>
+                                        </div>
+                                        <div className="flex justify-between text-sm">
+                                            <span className="text-gray-600">Mileage Deductions:</span>
+                                            <span className="font-semibold">{formatCurrency(stats.totalMileage)}</span>
+                                        </div>
+                                        <div className="flex justify-between text-sm font-bold border-t pt-2">
+                                            <span className="text-gray-900">Total Deductions:</span>
+                                            <span className="text-green-600">{formatCurrency(stats.totalDeductions)}</span>
+                                        </div>
+                                        <div className="text-xs text-gray-500 text-center">
+                                            {stats.transactionCount} transactions
+                                        </div>
+                                    </div>
+                                    <div className="flex gap-2 mt-4">
+                                        <button
+                                            onClick={() => handleEdit(client)}
+                                            className="flex-1 bg-blue-600 text-white py-2 rounded-lg text-sm hover:bg-blue-700 transition"
+                                        >
+                                            Edit
+                                        </button>
+                                        <button
+                                            onClick={() => handleDelete(client.id)}
+                                            className="flex-1 bg-red-600 text-white py-2 rounded-lg text-sm hover:bg-red-700 transition"
+                                        >
+                                            Delete
+                                        </button>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+
+                    {clients.length === 0 && (
+                        <div className="text-center py-12 bg-white rounded-xl shadow-md">
+                            <div className="text-6xl mb-4">👥</div>
+                            <p className="text-gray-600 text-lg">No clients yet</p>
+                            <p className="text-gray-500 text-sm mt-2">Add your first client to start tracking</p>
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
+        // Reports Page Component
+        function ReportsPage({ expenses, mileage, clients, user }) {
+            const totalExpenses = expenses.reduce((sum, exp) => sum + convertToUSD(exp.amount, exp.currency), 0);
+            const totalDeductible = expenses.filter(e => e.deductible).reduce((sum, exp) => sum + convertToUSD(exp.amount, exp.currency), 0);
+            const totalMileageDeduction = mileage.reduce((sum, m) => sum + (m.miles * m.rate), 0);
+            const totalDeductions = totalDeductible + totalMileageDeduction;
+            const estimatedTaxSavings = totalDeductions * 0.33;
+
+            const categories = ['Meals', 'Travel', 'Office Supplies', 'Software', 'Equipment', 'Marketing', 'Other'];
+            const categoryBreakdown = categories.map(cat => ({
+                category: cat,
+                amount: expenses.filter(e => e.category === cat && e.deductible).reduce((sum, exp) => sum + convertToUSD(exp.amount, exp.currency), 0)
+            })).filter(c => c.amount > 0);
+
+            const exportCSV = () => {
+                let csv = 'Date,Description,Category,Amount,Currency,USD Amount,Deductible,Client\n';
+                expenses.forEach(exp => {
+                    const client = clients.find(c => c.id === exp.clientId);
+                    csv += `${exp.date},"${exp.description}",${exp.category},${exp.amount},${exp.currency},${convertToUSD(exp.amount, exp.currency).toFixed(2)},${exp.deductible ? 'Yes' : 'No'},"${client ? client.name : 'N/A'}"\n`;
+                });
+                csv += '\n\nMileage Log\n';
+                csv += 'Date,Purpose,Start Location,End Location,Miles,Rate,Deduction,Client\n';
+                mileage.forEach(m => {
+                    const client = clients.find(c => c.id === m.clientId);
+                    csv += `${m.date},"${m.purpose}","${m.startLocation}","${m.endLocation}",${m.miles},${m.rate},${(m.miles * m.rate).toFixed(2)},"${client ? client.name : 'N/A'}"\n`;
+                });
+
+                const blob = new Blob([csv], { type: 'text/csv' });
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `financeflow-report-${new Date().toISOString().split('T')[0]}.csv`;
+                a.click();
+            };
+
+            const exportPDF = () => {
+                alert('📄 PDF export would generate a comprehensive tax report with all deductions, suitable for accountant review. In production, this would use a library like jsPDF.');
+            };
+
+            return (
+                <div className="space-y-6">
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                        <div>
+                            <h2 className="text-3xl font-bold text-gray-900">Tax Reports</h2>
+                            <p className="text-gray-600 mt-1">Comprehensive tax deduction summary</p>
+                        </div>
+                        <div className="flex gap-2">
+                            <button
+                                onClick={exportCSV}
+                                className="bg-green-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-green-700 transition"
+                            >
+                                📊 Export CSV
+                            </button>
+                            <button
+                                onClick={exportPDF}
+                                className="bg-red-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-red-700 transition"
+                            >
+                                📄 Export PDF
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* Summary Report */}
+                    <div className="bg-white rounded-xl shadow-md p-8">
+                        <div className="text-center mb-8">
+                            <h3 className="text-2xl font-bold text-gray-900 mb-2">Year-to-Date Tax Summary</h3>
+                            <p className="text-gray-600">Generated on {new Date().toLocaleDateString()}</p>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                            <div className="bg-gradient-to-br from-purple-50 to-blue-50 p-6 rounded-xl">
+                                <p className="text-gray-700 font-medium mb-2">Total Business Expenses</p>
+                                <p className="text-4xl font-bold text-gray-900">{formatCurrency(totalExpenses)}</p>
+                            </div>
+                            <div className="bg-gradient-to-br from-green-50 to-emerald-50 p-6 rounded-xl">
+                                <p className="text-gray-700 font-medium mb-2">Total Tax Deductions</p>
+                                <p className="text-4xl font-bold text-green-600">{formatCurrency(totalDeductions)}</p>
+                            </div>
+                            <div className="bg-gradient-to-br from-yellow-50 to-orange-50 p-6 rounded-xl">
+                                <p className="text-gray-700 font-medium mb-2">Estimated Tax Savings (33%)</p>
+                                <p className="text-4xl font-bold text-yellow-600">{formatCurrency(estimatedTaxSavings)}</p>
+                            </div>
+                            <div className="bg-gradient-to-br from-blue-50 to-indigo-50 p-6 rounded-xl">
+                                <p className="text-gray-700 font-medium mb-2">Total Transactions</p>
+                                <p className="text-4xl font-bold text-blue-600">{expenses.length + mileage.length}</p>
+                            </div>
+                        </div>
+
+                        <div className="border-t pt-6">
+                            <h4 className="text-xl font-bold text-gray-900 mb-4">Deductions by Category</h4>
+                            <div className="space-y-3">
+                                {categoryBreakdown.map(cat => (
+                                    <div key={cat.category} className="flex justify-between items-center p-4 bg-gray-50 rounded-lg">
+                                        <span className="font-medium text-gray-900">{cat.category}</span>
+                                        <span className="text-lg font-bold text-purple-600">{formatCurrency(cat.amount)}</span>
+                                    </div>
+                                ))}
+                                <div className="flex justify-between items-center p-4 bg-blue-50 rounded-lg">
+                                    <span className="font-medium text-gray-900">🚗 Mileage Deduction</span>
+                                    <span className="text-lg font-bold text-blue-600">{formatCurrency(totalMileageDeduction)}</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="border-t mt-6 pt-6">
+                            <h4 className="text-xl font-bold text-gray-900 mb-4">Client Breakdown</h4>
+                            <div className="space-y-3">
+                                {clients.map(client => {
+                                    const clientExpenses = expenses.filter(e => e.clientId === client.id);
+                                    const clientMileage = mileage.filter(m => m.clientId === client.id);
+                                    const clientTotal = clientExpenses.reduce((sum, e) => sum + convertToUSD(e.amount, e.currency), 0) +
+                                                       clientMileage.reduce((sum, m) => sum + (m.miles * m.rate), 0);
+                                    if (clientTotal > 0) {
+                                        return (
+                                            <div key={client.id} className="flex justify-between items-center p-4 bg-gray-50 rounded-lg">
+                                                <div>
+                                                    <p className="font-medium text-gray-900">{client.name}</p>
+                                                    <p className="text-sm text-gray-600">{client.company}</p>
+                                                </div>
+                                                <span className="text-lg font-bold text-purple-600">{formatCurrency(clientTotal)}</span>
+                                            </div>
+                                        );
+                                    }
+                                    return null;
+                                })}
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Tax Form Previews */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="bg-white rounded-xl shadow-md p-6">
+                            <h3 className="text-xl font-bold text-gray-900 mb-4">📋 Schedule C Preview</h3>
+                            <p className="text-gray-600 mb-4">Profit or Loss from Business (Sole Proprietorship)</p>
+                            <div className="space-y-2 text-sm">
+                                <div className="flex justify-between p-2 bg-gray-50 rounded">
+                                    <span>Part II - Expenses</span>
+                                    <span className="font-semibold">{formatCurrency(totalDeductible)}</span>
+                                </div>
+                                <div className="flex justify-between p-2 bg-gray-50 rounded">
+                                    <span>Car and truck expenses</span>
+                                    <span className="font-semibold">{formatCurrency(totalMileageDeduction)}</span>
+                                </div>
+                                <div className="flex justify-between p-2 bg-green-50 rounded font-bold">
+                                    <span>Total Deductions</span>
+                                    <span className="text-green-600">{formatCurrency(totalDeductions)}</span>
+                                </div>
+                            </div>
+                            <p className="text-xs text-gray-500 mt-4">
+                                * This is a summary preview. Consult with a tax professional for filing.
+                            </p>
+                        </div>
+
+                        <div className="bg-white rounded-xl shadow-md p-6">
+                            <h3 className="text-xl font-bold text-gray-900 mb-4">📝 1099-MISC Worksheet</h3>
+                            <p className="text-gray-600 mb-4">Miscellaneous Income tracking by client</p>
+                            <div className="space-y-2 text-sm">
+                                {clients.slice(0, 3).map(client => {
+                                    const clientTotal = expenses.filter(e => e.clientId === client.id).reduce((sum, e) => sum + convertToUSD(e.amount, e.currency), 0);
+                                    return (
+                                        <div key={client.id} className="flex justify-between p-2 bg-gray-50 rounded">
+                                            <span>{client.name}</span>
+                                            <span className="font-semibold">{formatCurrency(clientTotal)}</span>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                            <p className="text-xs text-gray-500 mt-4">
+                                * Track payments from clients for accurate 1099 reporting.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        // Tax Tools Page Component
+        function TaxToolsPage({ expenses, mileage }) {
+            const [income, setIncome] = useState('75000');
+            const [filingStatus, setFilingStatus] = useState('single');
+            const [quarterlyIncome, setQuarterlyIncome] = useState('25000');
+
+            const totalDeductible = expenses.filter(e => e.deductible).reduce((sum, exp) => sum + convertToUSD(exp.amount, exp.currency), 0);
+            const totalMileageDeduction = mileage.reduce((sum, m) => sum + (m.miles * m.rate), 0);
+            const totalDeductions = totalDeductible + totalMileageDeduction;
+
+            // Simple tax bracket calculator
+            const calculateTaxBracket = () => {
+                const taxableIncome = parseFloat(income) - totalDeductions;
+                let bracket = '';
+                let rate = 0;
+                
+                if (filingStatus === 'single') {
+                    if (taxableIncome <= 11000) { bracket = '10%'; rate = 0.10; }
+                    else if (taxableIncome <= 44725) { bracket = '12%'; rate = 0.12; }
+                    else if (taxableIncome <= 95375) { bracket = '22%'; rate = 0.22; }
+                    else if (taxableIncome <= 182100) { bracket = '24%'; rate = 0.24; }
+                    else { bracket = '32%+'; rate = 0.32; }
+                } else {
+                    if (taxableIncome <= 22000) { bracket = '10%'; rate = 0.10; }
+                    else if (taxableIncome <= 89050) { bracket = '12%'; rate = 0.12; }
+                    else if (taxableIncome <= 190750) { bracket = '22%'; rate = 0.22; }
+                    else if (taxableIncome <= 364200) { bracket = '24%'; rate = 0.24; }
+                    else { bracket = '32%+'; rate = 0.32; }
+                }
+
+                const savingsFromDeductions = totalDeductions * rate;
+                return { bracket, rate, taxableIncome, savingsFromDeductions };
+            };
+
+            const taxInfo = calculateTaxBracket();
+
+            // Quarterly tax estimator
+            const calculateQuarterly = () => {
+                const quarterIncome = parseFloat(quarterlyIncome);
+                const quarterDeductions = totalDeductions / 4;
+                const taxable = quarterIncome - quarterDeductions;
+                const estimatedTax = taxable * 0.15; // Simplified self-employment tax
+                return { quarterIncome, quarterDeductions, taxable, estimatedTax };
+            };
+
+            const quarterlyInfo = calculateQuarterly();
+
+            return (
+                <div className="space-y-6">
+                    <div>
+                        <h2 className="text-3xl font-bold text-gray-900">Tax Tools</h2>
+                        <p className="text-gray-600 mt-1">Calculate brackets, estimate quarterly taxes, and plan savings</p>
+                    </div>
+
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        {/* Tax Bracket Calculator */}
+                        <div className="bg-white rounded-xl shadow-md p-6">
+                            <h3 className="text-xl font-bold text-gray-900 mb-4">🧮 Tax Bracket Calculator</h3>
+                            
+                            <div className="space-y-4 mb-6">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Annual Income</label>
+                                    <input
+                                        type="number"
+                                        value={income}
+                                        onChange={(e) => setIncome(e.target.value)}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Filing Status</label>
+                                    <select
+                                        value={filingStatus}
+                                        onChange={(e) => setFilingStatus(e.target.value)}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                                    >
+                                        <option value="single">Single</option>
+                                        <option value="married">Married Filing Jointly</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div className="space-y-3 bg-purple-50 p-4 rounded-lg">
+                                <div className="flex justify-between">
+                                    <span className="text-gray-700">Gross Income:</span>
+                                    <span className="font-semibold">{formatCurrency(parseFloat(income))}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                    <span className="text-gray-700">Your Deductions:</span>
+                                    <span className="font-semibold text-green-600">- {formatCurrency(totalDeductions)}</span>
+                                </div>
+                                <div className="flex justify-between border-t pt-2">
+                                    <span className="font-bold text-gray-900">Taxable Income:</span>
+                                    <span className="font-bold">{formatCurrency(taxInfo.taxableIncome)}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                    <span className="text-gray-700">Tax Bracket:</span>
+                                    <span className="font-bold text-purple-600">{taxInfo.bracket}</span>
+                                </div>
+                                <div className="flex justify-between bg-green-100 p-2 rounded">
+                                    <span className="font-bold text-green-800">Tax Savings from Deductions:</span>
+                                    <span className="font-bold text-green-600">{formatCurrency(taxInfo.savingsFromDeductions)}</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Quarterly Tax Estimator */}
+                        <div className="bg-white rounded-xl shadow-md p-6">
+                            <h3 className="text-xl font-bold text-gray-900 mb-4">📅 Quarterly Tax Estimator</h3>
+                            
+                            <div className="space-y-4 mb-6">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Quarterly Income</label>
+                                    <input
+                                        type="number"
+                                        value={quarterlyIncome}
+                                        onChange={(e) => setQuarterlyIncome(e.target.value)}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                                    />
+                                </div>
+                                <p className="text-sm text-gray-600">
+                                    Estimated quarterly tax payments for self-employed individuals
+                                </p>
+                            </div>
+
+                            <div className="space-y-3 bg-blue-50 p-4 rounded-lg">
+                                <div className="flex justify-between">
+                                    <span className="text-gray-700">Quarterly Income:</span>
+                                    <span className="font-semibold">{formatCurrency(quarterlyInfo.quarterIncome)}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                    <span className="text-gray-700">Quarterly Deductions:</span>
+                                    <span className="font-semibold text-green-600">- {formatCurrency(quarterlyInfo.quarterDeductions)}</span>
+                                </div>
+                                <div className="flex justify-between border-t pt-2">
+                                    <span className="font-bold text-gray-900">Taxable Amount:</span>
+                                    <span className="font-bold">{formatCurrency(quarterlyInfo.taxable)}</span>
+                                </div>
+                                <div className="flex justify-between bg-yellow-100 p-2 rounded">
+                                    <span className="font-bold text-yellow-800">Estimated Quarterly Tax:</span>
+                                    <span className="font-bold text-yellow-600">{formatCurrency(quarterlyInfo.estimatedTax)}</span>
+                                </div>
+                            </div>
+
+                            <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                                <p className="text-xs text-yellow-800">
+                                    <strong>Due Dates:</strong> Apr 15, Jun 15, Sep 15, Jan 15
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Multi-Year Comparison */}
+                    <div className="bg-white rounded-xl shadow-md p-6">
+                        <h3 className="text-xl font-bold text-gray-900 mb-4">📊 Multi-Year Deduction Trends</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div className="p-4 bg-gray-50 rounded-lg text-center">
+                                <p className="text-gray-600 text-sm mb-1">2023</p>
+                                <p className="text-2xl font-bold text-gray-400">{formatCurrency(totalDeductions * 0.85)}</p>
+                                <p className="text-xs text-gray-500 mt-1">Historical estimate</p>
+                            </div>
+                            <div className="p-4 bg-purple-50 rounded-lg text-center">
+                                <p className="text-gray-600 text-sm mb-1">2024</p>
+                                <p className="text-2xl font-bold text-purple-600">{formatCurrency(totalDeductions * 0.92)}</p>
+                                <p className="text-xs text-purple-600 mt-1">Previous year</p>
+                            </div>
+                            <div className="p-4 bg-green-50 rounded-lg text-center">
+                                <p className="text-gray-600 text-sm mb-1">2025 (YTD)</p>
+                                <p className="text-2xl font-bold text-green-600">{formatCurrency(totalDeductions)}</p>
+                                <p className="text-xs text-green-600 mt-1">Current year</p>
+                            </div>
+                        </div>
+                        <div className="mt-4 p-4 bg-blue-50 rounded-lg">
+                            <p className="text-sm text-blue-800">
+                                💡 <strong>Insight:</strong> Your deductions have increased {((totalDeductions / (totalDeductions * 0.92)) * 100 - 100).toFixed(1)}% compared to last year!
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        // Integrations Page Component
+        function IntegrationsPage() {
+            const integrations = [
+                { name: 'QuickBooks Online', icon: '💼', status: 'Available', description: 'Sync expenses automatically to QuickBooks' },
+                { name: 'Xero', icon: '📊', status: 'Available', description: 'Import and categorize transactions from Xero' },
+                { name: 'Bank Feeds', icon: '🏦', status: 'Available', description: 'Direct bank transaction import' },
+                { name: 'Expensify', icon: '💳', status: 'Available', description: 'Import expense reports from Expensify' },
+                { name: 'Gmail', icon: '📧', status: 'Available', description: 'Auto-extract receipts from email' },
+                { name: 'Google Drive', icon: '📁', status: 'Coming Soon', description: 'Store receipts in Google Drive' },
+                { name: 'Zapier', icon: '⚡', status: 'Coming Soon', description: 'Connect to 5000+ apps' },
+                { name: 'Slack', icon: '💬', status: 'Coming Soon', description: 'Expense notifications in Slack' }
+            ];
+
+            const handleConnect = (name) => {
+                if (name === 'QuickBooks Online' || name === 'Xero') {
+                    alert(`🔐 OAuth connection flow would start here for ${name}. In production, this would redirect to the service's authorization page.`);
+                } else {
+                    alert(`🔗 ${name} integration setup coming soon!`);
+                }
+            };
+
+            return (
+                <div className="space-y-6">
+                    <div>
+                        <h2 className="text-3xl font-bold text-gray-900">Integrations</h2>
+                        <p className="text-gray-600 mt-1">Connect FinanceFlow with your favorite tools</p>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {integrations.map(integration => (
+                            <div key={integration.name} className="bg-white rounded-xl shadow-md p-6 card-hover">
+                                <div className="flex items-start justify-between mb-4">
+                                    <div className="text-4xl">{integration.icon}</div>
+                                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                                        integration.status === 'Available' 
+                                            ? 'bg-green-100 text-green-800' 
+                                            : 'bg-yellow-100 text-yellow-800'
+                                    }`}>
+                                        {integration.status}
+                                    </span>
+                                </div>
+                                <h3 className="text-lg font-bold text-gray-900 mb-2">{integration.name}</h3>
+                                <p className="text-sm text-gray-600 mb-4">{integration.description}</p>
+                                <button
+                                    onClick={() => handleConnect(integration.name)}
+                                    disabled={integration.status !== 'Available'}
+                                    className={`w-full py-2 px-4 rounded-lg font-medium transition ${
+                                        integration.status === 'Available'
+                                            ? 'bg-purple-600 text-white hover:bg-purple-700'
+                                            : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                                    }`}
+                                >
+                                    {integration.status === 'Available' ? 'Connect' : 'Coming Soon'}
+                                </button>
+                            </div>
+                        ))}
+                    </div>
+
+                    <div className="bg-blue-50 border border-blue-200 rounded-xl p-6">
+                        <h3 className="text-lg font-bold text-blue-900 mb-2">🚀 Enterprise Integrations</h3>
+                        <p className="text-blue-800 mb-4">
+                            Need custom integrations? Contact us about our Enterprise plan for API access and dedicated support.
+                        </p>
+                        <button className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition">
+                            Contact Sales
+                        </button>
+                    </div>
+                </div>
+            );
+        }
+
+        // Audit Page Component
+        function AuditPage({ auditLog }) {
+            return (
+                <div className="space-y-6">
+                    <div>
+                        <h2 className="text-3xl font-bold text-gray-900">Audit Log</h2>
+                        <p className="text-gray-600 mt-1">Complete activity history for compliance and review</p>
+                    </div>
+
+                    <div className="bg-white rounded-xl shadow-md overflow-hidden">
+                        <div className="overflow-x-auto">
+                            <table className="w-full">
+                                <thead className="bg-gray-50">
+                                    <tr>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Timestamp</th>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">User</th>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Action</th>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Details</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-gray-200">
+                                    {auditLog.map(entry => (
+                                        <tr key={entry.id} className="hover:bg-gray-50">
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                                {new Date(entry.timestamp).toLocaleString()}
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                                                {entry.user}
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-purple-600">
+                                                {entry.action}
+                                            </td>
+                                            <td className="px-6 py-4 text-sm text-gray-600">
+                                                {entry.details}
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    {auditLog.length === 0 && (
+                        <div className="text-center py-12 bg-white rounded-xl shadow-md">
+                            <div className="text-6xl mb-4">📋</div>
+                            <p className="text-gray-600 text-lg">No activity logged yet</p>
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
+        // Settings Page Component
+        function SettingsPage({ user }) {
+            const plans = [
+                {
+                    name: 'Starter',
+                    price: '$19/mo',
+                    features: ['100 expenses/month', '10 clients', 'OCR scanning', 'All exports', 'Audit trail']
+                },
+                {
+                    name: 'Professional',
+                    price: '$49/mo',
+                    features: ['Unlimited expenses', 'Unlimited clients', 'Priority support', 'Tax form generation', 'All integrations', 'API access']
+                },
+                {
+                    name: 'Accountant',
+                    price: '$149/mo',
+                    features: ['Multi-user (5 seats)', 'White-label branding', 'Client portal', 'Bulk operations', 'Dedicated support']
+                }
+            ];
+
+            return (
+                <div className="space-y-6">
+                    <div>
+                        <h2 className="text-3xl font-bold text-gray-900">Settings</h2>
+                        <p className="text-gray-600 mt-1">Manage your account and subscription</p>
+                    </div>
+
+                    {/* Profile */}
+                    <div className="bg-white rounded-xl shadow-md p-6">
+                        <h3 className="text-xl font-bold text-gray-900 mb-4">Profile Information</h3>
+                        <div className="space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
+                                <input
+                                    type="text"
+                                    value={user.name}
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                                    readOnly
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                                <input
+                                    type="email"
+                                    value={user.email}
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                                    readOnly
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Current Plan</label>
+                                <div className="flex items-center gap-2">
+                                    <span className="px-4 py-2 bg-purple-100 text-purple-800 rounded-lg font-semibold">
+                                        {user.plan}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Plans */}
+                    <div>
+                        <h3 className="text-xl font-bold text-gray-900 mb-4">Subscription Plans</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            {plans.map(plan => (
+                                <div key={plan.name} className={`bg-white rounded-xl shadow-md p-6 ${
+                                    plan.name === user.plan ? 'ring-2 ring-purple-600' : ''
+                                }`}>
+                                    {plan.name === user.plan && (
+                                        <div className="mb-2">
+                                            <span className="px-3 py-1 bg-purple-600 text-white text-xs font-semibold rounded-full">
+                                                Current Plan
+                                            </span>
+                                        </div>
+                                    )}
+                                    <h4 className="text-2xl font-bold text-gray-900 mb-2">{plan.name}</h4>
+                                    <p className="text-3xl font-bold text-purple-600 mb-4">{plan.price}</p>
+                                    <ul className="space-y-2 mb-6">
+                                        {plan.features.map(feature => (
+                                            <li key={feature} className="flex items-start text-sm text-gray-600">
+                                                <span className="mr-2">✓</span>
+                                                <span>{feature}</span>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                    <button
+                                        disabled={plan.name === user.plan}
+                                        className={`w-full py-2 px-4 rounded-lg font-medium transition ${
+                                            plan.name === user.plan
+                                                ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                                                : 'bg-purple-600 text-white hover:bg-purple-700'
+                                        }`}
+                                    >
+                                        {plan.name === user.plan ? 'Active' : 'Upgrade'}
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        // Render App
+        ReactDOM.render(<FinanceFlowApp />, document.getElementById('root'));
+    </script>
+</body>
+</html>
