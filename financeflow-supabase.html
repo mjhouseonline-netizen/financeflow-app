@@ -1,0 +1,1024 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FinanceFlow - Smart Business Finance Solutions</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+        * { font-family: 'Inter', sans-serif; }
+        .gradient-bg { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+        .card-hover { transition: all 0.3s ease; }
+        .card-hover:hover { transform: translateY(-4px); box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1); }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+
+        // Initialize Supabase
+        const SUPABASE_URL = 'https://nabtuvbhcgreaaoagxve.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5hYnR1dmJoY2dyZWFhb2FneHZlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjE4ODQzNTcsImV4cCI6MjA3NzQ2MDM1N30.7m6hspOJWpQJkgDsw9J9pZhXo4OKjlGGhQru6qWbDUc';
+        const supabase = supabaseClient.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        // Utility Functions
+        const formatCurrency = (amount, currency = 'USD') => {
+            return new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(amount);
+        };
+
+        const exchangeRates = {
+            USD: 1, EUR: 1.09, GBP: 1.27, CAD: 0.74, AUD: 0.66, 
+            JPY: 0.0067, CNY: 0.14, INR: 0.012
+        };
+
+        const convertToUSD = (amount, currency) => {
+            return amount * exchangeRates[currency];
+        };
+
+        // Auth Component
+        function AuthScreen({ onLogin }) {
+            const [isLogin, setIsLogin] = useState(true);
+            const [email, setEmail] = useState('');
+            const [password, setPassword] = useState('');
+            const [fullName, setFullName] = useState('');
+            const [loading, setLoading] = useState(false);
+            const [error, setError] = useState('');
+            const [message, setMessage] = useState('');
+
+            const handleSubmit = async (e) => {
+                e.preventDefault();
+                setLoading(true);
+                setError('');
+                setMessage('');
+
+                try {
+                    if (isLogin) {
+                        const { data, error } = await supabase.auth.signInWithPassword({
+                            email,
+                            password
+                        });
+                        if (error) throw error;
+                        onLogin(data.user);
+                    } else {
+                        const { data, error } = await supabase.auth.signUp({
+                            email,
+                            password,
+                            options: {
+                                data: {
+                                    full_name: fullName
+                                }
+                            }
+                        });
+                        if (error) throw error;
+                        setMessage('Check your email to confirm your account!');
+                    }
+                } catch (error) {
+                    setError(error.message);
+                } finally {
+                    setLoading(false);
+                }
+            };
+
+            return (
+                <div className="min-h-screen gradient-bg flex items-center justify-center p-4">
+                    <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md">
+                        <div className="text-center mb-8">
+                            <h1 className="text-3xl font-bold text-gray-900 mb-2">
+                                {isLogin ? 'Welcome Back' : 'Create Account'}
+                            </h1>
+                            <p className="text-gray-600">
+                                {isLogin ? 'Sign in to continue' : 'Start tracking your expenses'}
+                            </p>
+                        </div>
+
+                        {error && (
+                            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4">
+                                {error}
+                            </div>
+                        )}
+
+                        {message && (
+                            <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg mb-4">
+                                {message}
+                            </div>
+                        )}
+
+                        <form onSubmit={handleSubmit} className="space-y-4">
+                            {!isLogin && (
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        Full Name
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={fullName}
+                                        onChange={(e) => setFullName(e.target.value)}
+                                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                                        placeholder="John Doe"
+                                        required={!isLogin}
+                                    />
+                                </div>
+                            )}
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    Email
+                                </label>
+                                <input
+                                    type="email"
+                                    value={email}
+                                    onChange={(e) => setEmail(e.target.value)}
+                                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                                    placeholder="you@example.com"
+                                    required
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    Password
+                                </label>
+                                <input
+                                    type="password"
+                                    value={password}
+                                    onChange={(e) => setPassword(e.target.value)}
+                                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                                    placeholder="••••••••"
+                                    required
+                                    minLength={6}
+                                />
+                            </div>
+
+                            <button
+                                type="submit"
+                                disabled={loading}
+                                className="w-full gradient-bg text-white py-3 rounded-lg font-semibold hover:opacity-90 transition disabled:opacity-50"
+                            >
+                                {loading ? 'Loading...' : isLogin ? 'Sign In' : 'Sign Up'}
+                            </button>
+                        </form>
+
+                        <div className="mt-6 text-center">
+                            <button
+                                onClick={() => {
+                                    setIsLogin(!isLogin);
+                                    setError('');
+                                    setMessage('');
+                                }}
+                                className="text-indigo-600 hover:text-indigo-800 font-medium"
+                            >
+                                {isLogin ? "Don't have an account? Sign Up" : 'Already have an account? Sign In'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        // Main App Component
+        function FinanceFlowApp() {
+            const [currentUser, setCurrentUser] = useState(null);
+            const [currentPage, setCurrentPage] = useState('dashboard');
+            const [expenses, setExpenses] = useState([]);
+            const [mileage, setMileage] = useState([]);
+            const [clients, setClients] = useState([]);
+            const [loading, setLoading] = useState(true);
+            const [dataLoading, setDataLoading] = useState(false);
+
+            // Check for existing session
+            useEffect(() => {
+                checkUser();
+                
+                // Listen for auth changes
+                const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
+                    if (session?.user) {
+                        setCurrentUser(session.user);
+                        loadUserData(session.user.id);
+                    } else {
+                        setCurrentUser(null);
+                    }
+                });
+
+                return () => {
+                    authListener?.subscription?.unsubscribe();
+                };
+            }, []);
+
+            const checkUser = async () => {
+                try {
+                    const { data: { session } } = await supabase.auth.getSession();
+                    if (session?.user) {
+                        setCurrentUser(session.user);
+                        await loadUserData(session.user.id);
+                    }
+                } catch (error) {
+                    console.error('Error checking user:', error);
+                } finally {
+                    setLoading(false);
+                }
+            };
+
+            const loadUserData = async (userId) => {
+                setDataLoading(true);
+                try {
+                    // Load expenses
+                    const { data: expensesData, error: expensesError } = await supabase
+                        .from('expenses')
+                        .select('*')
+                        .eq('user_id', userId)
+                        .order('date', { ascending: false });
+                    
+                    if (expensesError) throw expensesError;
+                    setExpenses(expensesData || []);
+
+                    // Load mileage
+                    const { data: mileageData, error: mileageError } = await supabase
+                        .from('mileage')
+                        .select('*')
+                        .eq('user_id', userId)
+                        .order('date', { ascending: false });
+                    
+                    if (mileageError) throw mileageError;
+                    setMileage(mileageData || []);
+
+                    // Load clients
+                    const { data: clientsData, error: clientsError } = await supabase
+                        .from('clients')
+                        .select('*')
+                        .eq('user_id', userId)
+                        .order('name');
+                    
+                    if (clientsError) throw clientsError;
+                    setClients(clientsData || []);
+
+                } catch (error) {
+                    console.error('Error loading data:', error);
+                    alert('Error loading data: ' + error.message);
+                } finally {
+                    setDataLoading(false);
+                }
+            };
+
+            const handleLogin = (user) => {
+                setCurrentUser(user);
+                loadUserData(user.id);
+            };
+
+            const handleLogout = async () => {
+                await supabase.auth.signOut();
+                setCurrentUser(null);
+                setExpenses([]);
+                setMileage([]);
+                setClients([]);
+            };
+
+            const addExpense = async (expense) => {
+                try {
+                    const { data, error } = await supabase
+                        .from('expenses')
+                        .insert([{
+                            ...expense,
+                            user_id: currentUser.id
+                        }])
+                        .select()
+                        .single();
+
+                    if (error) throw error;
+                    setExpenses([data, ...expenses]);
+                    return data;
+                } catch (error) {
+                    console.error('Error adding expense:', error);
+                    alert('Error adding expense: ' + error.message);
+                }
+            };
+
+            const updateExpense = async (id, updates) => {
+                try {
+                    const { data, error } = await supabase
+                        .from('expenses')
+                        .update(updates)
+                        .eq('id', id)
+                        .eq('user_id', currentUser.id)
+                        .select()
+                        .single();
+
+                    if (error) throw error;
+                    setExpenses(expenses.map(e => e.id === id ? data : e));
+                } catch (error) {
+                    console.error('Error updating expense:', error);
+                    alert('Error updating expense: ' + error.message);
+                }
+            };
+
+            const deleteExpense = async (id) => {
+                try {
+                    const { error } = await supabase
+                        .from('expenses')
+                        .delete()
+                        .eq('id', id)
+                        .eq('user_id', currentUser.id);
+
+                    if (error) throw error;
+                    setExpenses(expenses.filter(e => e.id !== id));
+                } catch (error) {
+                    console.error('Error deleting expense:', error);
+                    alert('Error deleting expense: ' + error.message);
+                }
+            };
+
+            const addMileage = async (mileageEntry) => {
+                try {
+                    const { data, error } = await supabase
+                        .from('mileage')
+                        .insert([{
+                            ...mileageEntry,
+                            user_id: currentUser.id
+                        }])
+                        .select()
+                        .single();
+
+                    if (error) throw error;
+                    setMileage([data, ...mileage]);
+                } catch (error) {
+                    console.error('Error adding mileage:', error);
+                    alert('Error adding mileage: ' + error.message);
+                }
+            };
+
+            const deleteMileage = async (id) => {
+                try {
+                    const { error } = await supabase
+                        .from('mileage')
+                        .delete()
+                        .eq('id', id)
+                        .eq('user_id', currentUser.id);
+
+                    if (error) throw error;
+                    setMileage(mileage.filter(m => m.id !== id));
+                } catch (error) {
+                    console.error('Error deleting mileage:', error);
+                    alert('Error deleting mileage: ' + error.message);
+                }
+            };
+
+            const addClient = async (client) => {
+                try {
+                    const { data, error } = await supabase
+                        .from('clients')
+                        .insert([{
+                            ...client,
+                            user_id: currentUser.id
+                        }])
+                        .select()
+                        .single();
+
+                    if (error) throw error;
+                    setClients([...clients, data]);
+                } catch (error) {
+                    console.error('Error adding client:', error);
+                    alert('Error adding client: ' + error.message);
+                }
+            };
+
+            const deleteClient = async (id) => {
+                try {
+                    const { error } = await supabase
+                        .from('clients')
+                        .delete()
+                        .eq('id', id)
+                        .eq('user_id', currentUser.id);
+
+                    if (error) throw error;
+                    setClients(clients.filter(c => c.id !== id));
+                } catch (error) {
+                    console.error('Error deleting client:', error);
+                    alert('Error deleting client: ' + error.message);
+                }
+            };
+
+            if (loading) {
+                return (
+                    <div className="min-h-screen gradient-bg flex items-center justify-center">
+                        <div className="text-white text-2xl">Loading...</div>
+                    </div>
+                );
+            }
+
+            if (!currentUser) {
+                return <AuthScreen onLogin={handleLogin} />;
+            }
+
+            return (
+                <div className="min-h-screen bg-gray-50">
+                    {/* Navigation */}
+                    <nav className="gradient-bg text-white shadow-lg">
+                        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                            <div className="flex justify-between items-center h-16">
+                                <div className="flex items-center space-x-8">
+                                    <h1 className="text-2xl font-bold">FinanceFlow</h1>
+                                    <div className="hidden md:flex space-x-4">
+                                        <button
+                                            onClick={() => setCurrentPage('dashboard')}
+                                            className={`px-3 py-2 rounded-lg ${currentPage === 'dashboard' ? 'bg-white/20' : 'hover:bg-white/10'}`}
+                                        >
+                                            Dashboard
+                                        </button>
+                                        <button
+                                            onClick={() => setCurrentPage('expenses')}
+                                            className={`px-3 py-2 rounded-lg ${currentPage === 'expenses' ? 'bg-white/20' : 'hover:bg-white/10'}`}
+                                        >
+                                            Expenses
+                                        </button>
+                                        <button
+                                            onClick={() => setCurrentPage('mileage')}
+                                            className={`px-3 py-2 rounded-lg ${currentPage === 'mileage' ? 'bg-white/20' : 'hover:bg-white/10'}`}
+                                        >
+                                            Mileage
+                                        </button>
+                                        <button
+                                            onClick={() => setCurrentPage('clients')}
+                                            className={`px-3 py-2 rounded-lg ${currentPage === 'clients' ? 'bg-white/20' : 'hover:bg-white/10'}`}
+                                        >
+                                            Clients
+                                        </button>
+                                    </div>
+                                </div>
+                                <div className="flex items-center space-x-4">
+                                    <span className="text-sm">{currentUser.email}</span>
+                                    <button
+                                        onClick={handleLogout}
+                                        className="px-4 py-2 bg-white/20 rounded-lg hover:bg-white/30 transition"
+                                    >
+                                        Logout
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </nav>
+
+                    {/* Content */}
+                    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                        {dataLoading && (
+                            <div className="bg-blue-50 border border-blue-200 text-blue-700 px-4 py-3 rounded-lg mb-4">
+                                Loading your data...
+                            </div>
+                        )}
+
+                        {currentPage === 'dashboard' && <Dashboard expenses={expenses} mileage={mileage} />}
+                        {currentPage === 'expenses' && (
+                            <ExpensesPage
+                                expenses={expenses}
+                                onAdd={addExpense}
+                                onUpdate={updateExpense}
+                                onDelete={deleteExpense}
+                            />
+                        )}
+                        {currentPage === 'mileage' && (
+                            <MileagePage
+                                mileage={mileage}
+                                onAdd={addMileage}
+                                onDelete={deleteMileage}
+                            />
+                        )}
+                        {currentPage === 'clients' && (
+                            <ClientsPage
+                                clients={clients}
+                                onAdd={addClient}
+                                onDelete={deleteClient}
+                            />
+                        )}
+                    </div>
+                </div>
+            );
+        }
+
+        // Dashboard Component
+        function Dashboard({ expenses, mileage }) {
+            const totalExpenses = expenses.reduce((sum, e) => sum + parseFloat(e.amount || 0), 0);
+            const totalMileage = mileage.reduce((sum, m) => sum + parseFloat(m.miles || 0), 0);
+            const mileageDeduction = totalMileage * 0.67;
+
+            return (
+                <div className="space-y-6">
+                    <h2 className="text-3xl font-bold text-gray-900">Dashboard</h2>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div className="bg-white p-6 rounded-xl shadow-lg card-hover">
+                            <div className="text-gray-600 text-sm font-medium mb-2">Total Expenses</div>
+                            <div className="text-3xl font-bold text-gray-900">{formatCurrency(totalExpenses)}</div>
+                            <div className="text-sm text-gray-500 mt-2">{expenses.length} transactions</div>
+                        </div>
+
+                        <div className="bg-white p-6 rounded-xl shadow-lg card-hover">
+                            <div className="text-gray-600 text-sm font-medium mb-2">Mileage Deduction</div>
+                            <div className="text-3xl font-bold text-gray-900">{formatCurrency(mileageDeduction)}</div>
+                            <div className="text-sm text-gray-500 mt-2">{totalMileage.toFixed(1)} miles</div>
+                        </div>
+
+                        <div className="bg-white p-6 rounded-xl shadow-lg card-hover">
+                            <div className="text-gray-600 text-sm font-medium mb-2">Tax Savings</div>
+                            <div className="text-3xl font-bold text-green-600">
+                                {formatCurrency((totalExpenses + mileageDeduction) * 0.30)}
+                            </div>
+                            <div className="text-sm text-gray-500 mt-2">Estimated at 30%</div>
+                        </div>
+                    </div>
+
+                    <div className="bg-white p-6 rounded-xl shadow-lg">
+                        <h3 className="text-xl font-bold mb-4">Recent Expenses</h3>
+                        {expenses.length === 0 ? (
+                            <p className="text-gray-500">No expenses yet. Add your first expense!</p>
+                        ) : (
+                            <div className="space-y-3">
+                                {expenses.slice(0, 5).map(expense => (
+                                    <div key={expense.id} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                                        <div>
+                                            <div className="font-medium">{expense.category}</div>
+                                            <div className="text-sm text-gray-500">{expense.description}</div>
+                                            <div className="text-xs text-gray-400">{expense.date}</div>
+                                        </div>
+                                        <div className="text-lg font-bold">{formatCurrency(expense.amount)}</div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                </div>
+            );
+        }
+
+        // Expenses Page Component
+        function ExpensesPage({ expenses, onAdd, onUpdate, onDelete }) {
+            const [showForm, setShowForm] = useState(false);
+            const [formData, setFormData] = useState({
+                date: new Date().toISOString().split('T')[0],
+                category: 'Office Supplies',
+                description: '',
+                amount: '',
+                currency: 'USD',
+                tax_deductible: true
+            });
+
+            const handleSubmit = async (e) => {
+                e.preventDefault();
+                await onAdd(formData);
+                setFormData({
+                    date: new Date().toISOString().split('T')[0],
+                    category: 'Office Supplies',
+                    description: '',
+                    amount: '',
+                    currency: 'USD',
+                    tax_deductible: true
+                });
+                setShowForm(false);
+            };
+
+            return (
+                <div className="space-y-6">
+                    <div className="flex justify-between items-center">
+                        <h2 className="text-3xl font-bold text-gray-900">Expenses</h2>
+                        <button
+                            onClick={() => setShowForm(!showForm)}
+                            className="gradient-bg text-white px-6 py-3 rounded-lg font-semibold hover:opacity-90"
+                        >
+                            {showForm ? 'Cancel' : '+ Add Expense'}
+                        </button>
+                    </div>
+
+                    {showForm && (
+                        <div className="bg-white p-6 rounded-xl shadow-lg">
+                            <form onSubmit={handleSubmit} className="space-y-4">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">Date</label>
+                                        <input
+                                            type="date"
+                                            value={formData.date}
+                                            onChange={(e) => setFormData({...formData, date: e.target.value})}
+                                            className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                                            required
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">Category</label>
+                                        <select
+                                            value={formData.category}
+                                            onChange={(e) => setFormData({...formData, category: e.target.value})}
+                                            className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                                        >
+                                            <option>Office Supplies</option>
+                                            <option>Software</option>
+                                            <option>Travel</option>
+                                            <option>Meals</option>
+                                            <option>Marketing</option>
+                                            <option>Utilities</option>
+                                            <option>Other</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
+                                    <input
+                                        type="text"
+                                        value={formData.description}
+                                        onChange={(e) => setFormData({...formData, description: e.target.value})}
+                                        className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                                        placeholder="What did you buy?"
+                                        required
+                                    />
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">Amount</label>
+                                        <input
+                                            type="number"
+                                            step="0.01"
+                                            value={formData.amount}
+                                            onChange={(e) => setFormData({...formData, amount: e.target.value})}
+                                            className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                                            placeholder="0.00"
+                                            required
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">Currency</label>
+                                        <select
+                                            value={formData.currency}
+                                            onChange={(e) => setFormData({...formData, currency: e.target.value})}
+                                            className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                                        >
+                                            <option>USD</option>
+                                            <option>EUR</option>
+                                            <option>GBP</option>
+                                            <option>CAD</option>
+                                            <option>AUD</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <button
+                                    type="submit"
+                                    className="w-full gradient-bg text-white py-3 rounded-lg font-semibold hover:opacity-90"
+                                >
+                                    Add Expense
+                                </button>
+                            </form>
+                        </div>
+                    )}
+
+                    <div className="bg-white rounded-xl shadow-lg overflow-hidden">
+                        {expenses.length === 0 ? (
+                            <div className="p-8 text-center text-gray-500">
+                                No expenses yet. Click "Add Expense" to get started!
+                            </div>
+                        ) : (
+                            <div className="overflow-x-auto">
+                                <table className="w-full">
+                                    <thead className="bg-gray-50">
+                                        <tr>
+                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
+                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Category</th>
+                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Description</th>
+                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Amount</th>
+                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-200">
+                                        {expenses.map(expense => (
+                                            <tr key={expense.id}>
+                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{expense.date}</td>
+                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{expense.category}</td>
+                                                <td className="px-6 py-4 text-sm text-gray-900">{expense.description}</td>
+                                                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                                                    {formatCurrency(expense.amount, expense.currency)}
+                                                </td>
+                                                <td className="px-6 py-4 whitespace-nowrap text-sm">
+                                                    <button
+                                                        onClick={() => onDelete(expense.id)}
+                                                        className="text-red-600 hover:text-red-800"
+                                                    >
+                                                        Delete
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            );
+        }
+
+        // Mileage Page Component
+        function MileagePage({ mileage, onAdd, onDelete }) {
+            const [showForm, setShowForm] = useState(false);
+            const [formData, setFormData] = useState({
+                date: new Date().toISOString().split('T')[0],
+                from_location: '',
+                to_location: '',
+                miles: '',
+                purpose: ''
+            });
+
+            const handleSubmit = async (e) => {
+                e.preventDefault();
+                await onAdd(formData);
+                setFormData({
+                    date: new Date().toISOString().split('T')[0],
+                    from_location: '',
+                    to_location: '',
+                    miles: '',
+                    purpose: ''
+                });
+                setShowForm(false);
+            };
+
+            const totalMiles = mileage.reduce((sum, m) => sum + parseFloat(m.miles || 0), 0);
+            const totalDeduction = totalMiles * 0.67;
+
+            return (
+                <div className="space-y-6">
+                    <div className="flex justify-between items-center">
+                        <h2 className="text-3xl font-bold text-gray-900">Mileage Tracking</h2>
+                        <button
+                            onClick={() => setShowForm(!showForm)}
+                            className="gradient-bg text-white px-6 py-3 rounded-lg font-semibold hover:opacity-90"
+                        >
+                            {showForm ? 'Cancel' : '+ Add Trip'}
+                        </button>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="bg-white p-6 rounded-xl shadow-lg">
+                            <div className="text-gray-600 text-sm font-medium mb-2">Total Miles</div>
+                            <div className="text-3xl font-bold text-gray-900">{totalMiles.toFixed(1)}</div>
+                        </div>
+                        <div className="bg-white p-6 rounded-xl shadow-lg">
+                            <div className="text-gray-600 text-sm font-medium mb-2">Tax Deduction</div>
+                            <div className="text-3xl font-bold text-green-600">{formatCurrency(totalDeduction)}</div>
+                            <div className="text-xs text-gray-500 mt-1">@ $0.67/mile (2024 IRS rate)</div>
+                        </div>
+                    </div>
+
+                    {showForm && (
+                        <div className="bg-white p-6 rounded-xl shadow-lg">
+                            <form onSubmit={handleSubmit} className="space-y-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">Date</label>
+                                    <input
+                                        type="date"
+                                        value={formData.date}
+                                        onChange={(e) => setFormData({...formData, date: e.target.value})}
+                                        className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                                        required
+                                    />
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">From</label>
+                                        <input
+                                            type="text"
+                                            value={formData.from_location}
+                                            onChange={(e) => setFormData({...formData, from_location: e.target.value})}
+                                            className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                                            placeholder="Starting location"
+                                            required
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">To</label>
+                                        <input
+                                            type="text"
+                                            value={formData.to_location}
+                                            onChange={(e) => setFormData({...formData, to_location: e.target.value})}
+                                            className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                                            placeholder="Destination"
+                                            required
+                                        />
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">Miles</label>
+                                    <input
+                                        type="number"
+                                        step="0.1"
+                                        value={formData.miles}
+                                        onChange={(e) => setFormData({...formData, miles: e.target.value})}
+                                        className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                                        placeholder="0.0"
+                                        required
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">Purpose</label>
+                                    <input
+                                        type="text"
+                                        value={formData.purpose}
+                                        onChange={(e) => setFormData({...formData, purpose: e.target.value})}
+                                        className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                                        placeholder="Business purpose"
+                                        required
+                                    />
+                                </div>
+
+                                <button
+                                    type="submit"
+                                    className="w-full gradient-bg text-white py-3 rounded-lg font-semibold hover:opacity-90"
+                                >
+                                    Add Trip
+                                </button>
+                            </form>
+                        </div>
+                    )}
+
+                    <div className="bg-white rounded-xl shadow-lg overflow-hidden">
+                        {mileage.length === 0 ? (
+                            <div className="p-8 text-center text-gray-500">
+                                No trips yet. Click "Add Trip" to get started!
+                            </div>
+                        ) : (
+                            <div className="overflow-x-auto">
+                                <table className="w-full">
+                                    <thead className="bg-gray-50">
+                                        <tr>
+                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
+                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">From → To</th>
+                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Miles</th>
+                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Purpose</th>
+                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Deduction</th>
+                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-200">
+                                        {mileage.map(trip => (
+                                            <tr key={trip.id}>
+                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{trip.date}</td>
+                                                <td className="px-6 py-4 text-sm text-gray-900">
+                                                    {trip.from_location} → {trip.to_location}
+                                                </td>
+                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{trip.miles}</td>
+                                                <td className="px-6 py-4 text-sm text-gray-900">{trip.purpose}</td>
+                                                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-green-600">
+                                                    {formatCurrency(trip.miles * 0.67)}
+                                                </td>
+                                                <td className="px-6 py-4 whitespace-nowrap text-sm">
+                                                    <button
+                                                        onClick={() => onDelete(trip.id)}
+                                                        className="text-red-600 hover:text-red-800"
+                                                    >
+                                                        Delete
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            );
+        }
+
+        // Clients Page Component
+        function ClientsPage({ clients, onAdd, onDelete }) {
+            const [showForm, setShowForm] = useState(false);
+            const [formData, setFormData] = useState({
+                name: '',
+                email: '',
+                phone: '',
+                company: ''
+            });
+
+            const handleSubmit = async (e) => {
+                e.preventDefault();
+                await onAdd(formData);
+                setFormData({ name: '', email: '', phone: '', company: '' });
+                setShowForm(false);
+            };
+
+            return (
+                <div className="space-y-6">
+                    <div className="flex justify-between items-center">
+                        <h2 className="text-3xl font-bold text-gray-900">Clients</h2>
+                        <button
+                            onClick={() => setShowForm(!showForm)}
+                            className="gradient-bg text-white px-6 py-3 rounded-lg font-semibold hover:opacity-90"
+                        >
+                            {showForm ? 'Cancel' : '+ Add Client'}
+                        </button>
+                    </div>
+
+                    {showForm && (
+                        <div className="bg-white p-6 rounded-xl shadow-lg">
+                            <form onSubmit={handleSubmit} className="space-y-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">Name</label>
+                                    <input
+                                        type="text"
+                                        value={formData.name}
+                                        onChange={(e) => setFormData({...formData, name: e.target.value})}
+                                        className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                                        placeholder="Client name"
+                                        required
+                                    />
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
+                                        <input
+                                            type="email"
+                                            value={formData.email}
+                                            onChange={(e) => setFormData({...formData, email: e.target.value})}
+                                            className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                                            placeholder="email@example.com"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">Phone</label>
+                                        <input
+                                            type="tel"
+                                            value={formData.phone}
+                                            onChange={(e) => setFormData({...formData, phone: e.target.value})}
+                                            className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                                            placeholder="(555) 123-4567"
+                                        />
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">Company</label>
+                                    <input
+                                        type="text"
+                                        value={formData.company}
+                                        onChange={(e) => setFormData({...formData, company: e.target.value})}
+                                        className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                                        placeholder="Company name"
+                                    />
+                                </div>
+
+                                <button
+                                    type="submit"
+                                    className="w-full gradient-bg text-white py-3 rounded-lg font-semibold hover:opacity-90"
+                                >
+                                    Add Client
+                                </button>
+                            </form>
+                        </div>
+                    )}
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {clients.length === 0 ? (
+                            <div className="col-span-full bg-white p-8 rounded-xl shadow-lg text-center text-gray-500">
+                                No clients yet. Click "Add Client" to get started!
+                            </div>
+                        ) : (
+                            clients.map(client => (
+                                <div key={client.id} className="bg-white p-6 rounded-xl shadow-lg card-hover">
+                                    <div className="flex justify-between items-start mb-4">
+                                        <h3 className="text-lg font-bold text-gray-900">{client.name}</h3>
+                                        <button
+                                            onClick={() => onDelete(client.id)}
+                                            className="text-red-600 hover:text-red-800"
+                                        >
+                                            ✕
+                                        </button>
+                                    </div>
+                                    {client.company && (
+                                        <p className="text-sm text-gray-600 mb-2">{client.company}</p>
+                                    )}
+                                    {client.email && (
+                                        <p className="text-sm text-gray-600 mb-1">📧 {client.email}</p>
+                                    )}
+                                    {client.phone && (
+                                        <p className="text-sm text-gray-600">📞 {client.phone}</p>
+                                    )}
+                                </div>
+                            ))
+                        )}
+                    </div>
+                </div>
+            );
+        }
+
+        // Render App
+        ReactDOM.render(<FinanceFlowApp />, document.getElementById('root'));
+    </script>
+</body>
+</html>
